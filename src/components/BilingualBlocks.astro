@@ -1,0 +1,160 @@
+---
+import type { ProvisionBlock } from '../lib/types';
+
+export interface Props {
+  blocks: ProvisionBlock[];
+}
+
+const { blocks } = Astro.props;
+
+/**
+ * Map block level to a heading element. The CSS class
+ * `.provision-block__heading` overrides the global serif heading style with
+ * a mono eyebrow look, so the visual is identical across h2/h3/h4 — we keep
+ * different elements only for document-outline accessibility.
+ *
+ *   level 1 (paragraph)  → h2
+ *   level 2 (letter)     → h3
+ *   level 3 (sub-point)  → h4
+ */
+function headingTag(level: number): 'h2' | 'h3' | 'h4' {
+  if (level === 1) return 'h2';
+  if (level === 2) return 'h3';
+  return 'h4';
+}
+
+/**
+ * Map block level to its modifier class. Level 1 paragraphs get no extra
+ * modifier (they're the default visual rhythm). Level 2 letters and level 3
+ * sub-points get a left-indent + denser eyebrow style via CSS.
+ */
+function levelModifier(level: number): string {
+  if (level === 2) return 'provision-block--lit';
+  if (level === 3) return 'provision-block--sub';
+  return '';
+}
+---
+<div class="provision-blocks">
+  {blocks.map((block) => {
+    const Tag = block.heading ? headingTag(block.level) : null;
+    const modifier = levelModifier(block.level);
+    return (
+      <section
+        id={block.id || undefined}
+        data-level={block.level}
+        class:list={['provision-block', modifier]}
+      >
+        {block.id && (
+          <button
+            type="button"
+            class="provision-block__permalink"
+            data-permalink={block.id}
+            aria-label={`Copy link to ${block.heading ?? 'block'}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+              <path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+            </svg>
+          </button>
+        )}
+
+        {Tag && (
+          <Tag class="provision-block__heading">{block.heading}</Tag>
+        )}
+
+        <div data-bilingual class="grid gap-6 md:grid-cols-2 md:gap-10">
+          <div data-lang="en" lang="en" class="bilingual-col legal min-w-0 lang-en-only" set:html={block.content_en} />
+          <div data-lang="zh" lang="zh-CN" class="bilingual-col legal min-w-0 lang-zh-only" set:html={block.content_zh} />
+        </div>
+      </section>
+    );
+  })}
+</div>
+
+<script>
+  /**
+   * Permalink copy + scroll-anchor sync.
+   *
+   * Single delegated click listener handles every `.provision-block__permalink`
+   * on the page. On click:
+   *   1. Build the full canonical URL (origin + pathname + #id)
+   *   2. navigator.clipboard.writeText() — silently fails on insecure context
+   *      or denied permission. Toast is suppressed in that case but the
+   *      anchor sync still runs so the :target flash + scroll happen.
+   *   3. history.replaceState() to swap the URL hash without pushing a
+   *      new history entry (Back button still goes to the previous page).
+   *   4. Manually re-trigger :target by toggling the location.hash via the
+   *      anchor — `history.replaceState` does not fire the :target update on
+   *      its own, so we navigate to the bare anchor with replaceState empty
+   *      then set window.location.hash. This is the same pattern Stripe and
+   *      MDN use.
+   *   5. Show a `.dr-toast` for ~1.4s; CSS animations handle in/out.
+   */
+  document.addEventListener('click', (event) => {
+    const target = event.target as Element | null;
+    if (!target) return;
+    const btn = target.closest<HTMLButtonElement>('.provision-block__permalink');
+    if (!btn) return;
+
+    const id = btn.getAttribute('data-permalink');
+    if (!id) return;
+
+    event.preventDefault();
+
+    const fullUrl = `${window.location.origin}${window.location.pathname}#${id}`;
+
+    // Best-effort copy. Browsers without navigator.clipboard (older Safari,
+    // non-https contexts) silently degrade — we still update the anchor.
+    let copied = false;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(fullUrl).then(
+        () => { showToast(id); },
+        () => { /* permission denied — silent */ },
+      );
+      copied = true; // optimistic; toast is shown only on success above
+    }
+
+    // Re-trigger :target so the same-block click also re-flashes the
+    // highlight. window.location.hash assignment is the lightest way to
+    // make the browser re-evaluate :target without polluting history.
+    if (window.location.hash !== `#${id}`) {
+      history.replaceState(null, '', `#${id}`);
+    }
+    // Force re-evaluation of :target even if the hash was already #id.
+    const target_el = document.getElementById(id);
+    if (target_el) {
+      // Reset and re-apply the animation by removing+forcing reflow+adding.
+      target_el.classList.remove('provision-block--retarget');
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      void target_el.offsetWidth;
+      target_el.classList.add('provision-block--retarget');
+    }
+
+    // Fallback: even if Clipboard API was unavailable, surface a generic
+    // confirmation only when we explicitly attempted copy. (Avoid silently
+    // pretending the copy succeeded.)
+    if (!copied) {
+      // intentionally no toast — user gets the URL change in the address bar
+    }
+  });
+
+  function showToast(id: string) {
+    const existing = document.querySelector('.dr-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'dr-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">' +
+        '<path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>' +
+      `<span>Link copied · #${id}</span>`;
+    document.body.appendChild(toast);
+
+    // CSS handles fadeIn 200ms + hold 1000ms + fadeOut 200ms. Remove from
+    // DOM 100ms after total duration to ensure fadeOut finishes.
+    window.setTimeout(() => { toast.remove(); }, 1500);
+  }
+</script>

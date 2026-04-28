@@ -1,0 +1,65 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+export interface Props {
+  title: string;
+  description?: string;
+  /** Canonical path, e.g. '/laws/gdpr/articles/1/' */
+  path?: string;
+}
+
+const {
+  title,
+  description = 'Digital Rulebook — bilingual (EN/ZH) reference for EU digital regulations.',
+  path,
+} = Astro.props;
+
+const siteName = 'Digital Rulebook';
+const fullTitle = title === siteName ? title : `${title} · ${siteName}`;
+const canonical = path
+  ? new URL(path, Astro.site ?? Astro.url).toString()
+  : Astro.url.toString();
+---
+<!doctype html>
+<html lang="en" class="lang-both">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {/* Fonts are self-hosted via @fontsource (see src/styles/global.css). */}
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+
+    {/* Restore the user's language preference before paint, to avoid a flash. */}
+    <script is:inline>
+      (function () {
+        try {
+          var v = localStorage.getItem('dr-lang');
+          if (v === 'en' || v === 'zh' || v === 'both') {
+            document.documentElement.classList.remove('lang-both', 'lang-en', 'lang-zh');
+            document.documentElement.classList.add('lang-' + v);
+            document.documentElement.setAttribute(
+              'lang',
+              v === 'zh' ? 'zh-CN' : 'en',
+            );
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen flex flex-col bg-[--color-cream] text-[--color-ink]">
+    <Header />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

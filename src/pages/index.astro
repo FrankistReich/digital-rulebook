@@ -1,0 +1,98 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import LawCard from '../components/LawCard.astro';
+import { getAllLaws } from '../lib/laws';
+
+const laws = getAllLaws();
+---
+<BaseLayout title="Digital Rulebook" path="/">
+  <section class="border-b border-[--color-rule] bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
+      <p class="dr-eyebrow dr-eyebrow--brand dr-eyebrow--hero">
+        EU · 中英对照 · BILINGUAL
+      </p>
+      <h1 class="dr-hero-h1 mt-3">
+        <span class="lang-en-only">A clean, bilingual reference<br/>for EU digital regulations.</span>
+        <span class="lang-zh-only">欧盟数字监管法规的<br/>中英对照参考。</span>
+      </h1>
+      <p class="dr-body mt-5 max-w-2xl">
+        <span class="lang-en-only">
+          Read GDPR, the Data Act and the AI Act side by side in English and Chinese.
+          Browse by recital or article, switch languages with one click, and link
+          straight to any provision.
+        </span>
+        <span class="lang-zh-only">
+          以中英双语对照阅读 GDPR、数据法与人工智能法。按序言或条文浏览，
+          一键切换语言模式，可直接链接到任何条款。
+        </span>
+      </p>
+      <div class="mt-7 flex flex-wrap gap-3">
+        <a
+          href={`/laws/${laws[0]?.slug ?? 'gdpr'}/`}
+          class="inline-flex items-center rounded-md bg-[--color-brand] px-5 py-2.5 text-sm font-medium text-white no-underline transition hover:bg-[--color-brand-deep]"
+        >
+          <span class="lang-en-strict">Start with {laws[0]?.short_title ?? 'GDPR'}</span>
+          <span class="lang-zh-only">从 {laws[0]?.short_title ?? 'GDPR'} 开始</span>
+        </a>
+        <a
+          href="/about/"
+          class="inline-flex items-center rounded-md border border-[--color-rule] bg-white px-5 py-2.5 text-sm font-medium text-[--color-ink] no-underline transition hover:border-[--color-brand]"
+        >
+          <span class="lang-en-strict">About this site</span>
+          <span class="lang-zh-only">关于本站</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+    <div class="mb-6 flex items-baseline justify-between">
+      <h2 class="dr-section-h2">
+        <span class="lang-en-strict">Regulations</span>
+        <span class="lang-zh-only">法律法规</span>
+      </h2>
+      <p class="dr-meta">
+        <span class="lang-en-strict">{laws.length} available</span>
+        <span class="lang-zh-only">共 {laws.length} 部</span>
+      </p>
+    </div>
+    <div class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {laws.map((law) => <LawCard law={law} />)}
+    </div>
+  </section>
+
+  <section class="border-t border-[--color-rule] bg-white">
+    <div class="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-3 md:px-6 md:py-16">
+      <div>
+        <h3 class="dr-feature-h3">
+          <span class="lang-en-strict">Side-by-side</span>
+          <span class="lang-zh-only">左右对照</span>
+        </h3>
+        <p class="dr-body mt-3">
+          <span class="lang-en-only">Every recital and article shows English and Chinese in parallel columns aligned paragraph by paragraph.</span>
+          <span class="lang-zh-only">每条序言与条文以左右双栏并排呈现，逐段对齐。</span>
+        </p>
+      </div>
+      <div>
+        <h3 class="dr-feature-h3">
+          <span class="lang-en-strict">Three view modes</span>
+          <span class="lang-zh-only">三种语言模式</span>
+        </h3>
+        <p class="dr-body mt-3">
+          <span class="lang-en-only">Switch instantly between Chinese only, English only, and bilingual. Preference is remembered locally.</span>
+          <span class="lang-zh-only">在中文、英文与中英对照之间即时切换，偏好本地保存。</span>
+        </p>
+      </div>
+      <div>
+        <h3 class="dr-feature-h3">
+          <span class="lang-en-strict">Static & fast</span>
+          <span class="lang-zh-only">纯静态、加载迅速</span>
+        </h3>
+        <p class="dr-body mt-3">
+          <span class="lang-en-only">Pre-rendered pages, zero JavaScript on the critical path. Includes sitemap and clean canonical URLs.</span>
+          <span class="lang-zh-only">页面预渲染，关键路径零 JS，附 sitemap 与规范 URL。</span>
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,15 @@
+{
+  "id": "gdpr",
+  "slug": "gdpr",
+  "short_title": "GDPR",
+  "title_en": "General Data Protection Regulation",
+  "title_zh": "通用数据保护条例",
+  "celex": "32016R0679",
+  "official_url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+  "in_force_date": "2018-05-25",
+  "description_en": "Regulation (EU) 2016/679 — protection of natural persons with regard to the processing of personal data and on the free movement of such data.",
+  "description_zh": "欧盟 2016/679 号条例 —— 关于自然人个人数据处理及该等数据自由流动的保护。",
+  "color": "#0b3d91",
+  "total_articles": 99,
+  "total_recitals": 173
+}

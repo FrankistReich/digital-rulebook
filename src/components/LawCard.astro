@@ -1,0 +1,79 @@
+---
+import type { Law } from '../lib/types';
+
+export interface Props {
+  law: Law;
+}
+const { law } = Astro.props;
+
+// Coverage signalling: when `total_articles` / `total_recitals` are set in
+// meta.json, render `4 / 99 articles` instead of `4 articles`. The "in
+// progress" pill alongside is rendered only when coverage is < 100%, so once
+// a law is fully transcribed the card cleanly drops the badge.
+const writtenArticles = law.articles.length;
+const writtenRecitals = law.recitals.length;
+const totalArticles = law.total_articles;
+const totalRecitals = law.total_recitals;
+const isInProgress =
+  (totalArticles !== undefined && writtenArticles < totalArticles) ||
+  (totalRecitals !== undefined && writtenRecitals < totalRecitals);
+
+const articlesLabelEn = totalArticles
+  ? `${writtenArticles} / ${totalArticles} articles`
+  : `${writtenArticles} articles`;
+const articlesLabelZh = totalArticles
+  ? `${writtenArticles} / ${totalArticles} 条文`
+  : `${writtenArticles} 条正文`;
+const recitalsLabelEn = totalRecitals
+  ? `${writtenRecitals} / ${totalRecitals} recitals`
+  : `${writtenRecitals} recitals`;
+const recitalsLabelZh = totalRecitals
+  ? `${writtenRecitals} / ${totalRecitals} 序言`
+  : `${writtenRecitals} 条序言`;
+---
+<a
+  href={`/laws/${law.slug}/`}
+  class="group block rounded-lg border border-[--color-rule] bg-white p-6 no-underline shadow-sm transition hover:-translate-y-0.5 hover:border-[--color-brand] hover:shadow-md"
+>
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <div class="flex items-center gap-2">
+      <span
+        class="inline-block h-2 w-2 rounded-full"
+        style={`background:${law.color}`}
+        aria-hidden="true"
+      ></span>
+      <span class="dr-eyebrow">CELEX {law.celex}</span>
+    </div>
+    {isInProgress && (
+      <span class="dr-coverage-pill">
+        <span class="lang-en-strict">In progress</span>
+        <span class="lang-zh-only">持续补充中</span>
+      </span>
+    )}
+  </div>
+
+  <h3 class="dr-section-h2 mt-3">
+    <span class="lang-en-only">{law.title_en}</span>
+    <span class="lang-zh-only">{law.title_zh}</span>
+  </h3>
+
+  <p class="dr-body mt-3">
+    <span class="lang-en-only">{law.description_en}</span>
+    <span class="lang-zh-only">{law.description_zh}</span>
+  </p>
+
+  <div class="dr-meta mt-5 flex flex-wrap gap-x-4 gap-y-1">
+    <span>
+      <span class="lang-en-strict">{recitalsLabelEn}</span>
+      <span class="lang-zh-only">{recitalsLabelZh}</span>
+    </span>
+    <span>
+      <span class="lang-en-strict">{articlesLabelEn}</span>
+      <span class="lang-zh-only">{articlesLabelZh}</span>
+    </span>
+    <span>
+      <span class="lang-en-strict">In force {law.in_force_date}</span>
+      <span class="lang-zh-only">生效 {law.in_force_date}</span>
+    </span>
+  </div>
+</a>

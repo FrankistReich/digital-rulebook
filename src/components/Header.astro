@@ -1,0 +1,93 @@
+---
+import LangSwitcher from './LangSwitcher.astro';
+import { getAllLaws } from '../lib/laws';
+
+const laws = getAllLaws();
+const path = Astro.url.pathname;
+const isActive = (prefix: string) => path === prefix || path.startsWith(prefix);
+
+/**
+ * Ghost items — laws we plan to ship but haven't wired up yet. Decision §13 #6
+ * (2026-04-28): keep them visible as roadmap signposts, but render them
+ * disabled (mono uppercase + lower opacity, no link, `aria-disabled`). When
+ * a corresponding `src/content/laws/<slug>/` folder lands, the entry moves
+ * into the `laws` array above and out of this list automatically.
+ */
+const ghostLaws: { slug: string; short: string }[] = [
+  { slug: 'data-act', short: 'Data Act' },
+  { slug: 'ai-act', short: 'AI Act' },
+];
+const ghostsToShow = ghostLaws.filter(
+  (g) => !laws.some((l) => l.slug === g.slug),
+);
+---
+<header class="sticky top-0 z-30 border-b border-[--color-rule] bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+  <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3 md:px-8">
+    <a href="/" class="dr-wordmark" aria-label="Digital Rulebook home">
+      <span class="dr-wordmark__mark" aria-hidden="true">D</span>
+      <span class="dr-wordmark__name">
+        <span>Digital</span>
+        <span>Rulebook</span>
+      </span>
+    </a>
+
+    <nav class="dr-nav ml-2 flex-1" aria-label="Primary">
+      {laws.map((l) => (
+        <a
+          href={`/laws/${l.slug}/`}
+          class:list={['dr-nav-link', isActive(`/laws/${l.slug}/`) && 'is-active']}
+          aria-current={isActive(`/laws/${l.slug}/`) ? 'page' : undefined}
+        >
+          {l.short_title}
+        </a>
+      ))}
+      {ghostsToShow.map((g) => (
+        <span
+          class="dr-nav-link dr-nav-link--ghost"
+          role="link"
+          aria-disabled="true"
+          title="Coming soon"
+        >
+          {g.short}
+        </span>
+      ))}
+      <a
+        href="/about/"
+        class:list={['dr-nav-link', isActive('/about/') && 'is-active']}
+        aria-current={isActive('/about/') ? 'page' : undefined}
+      >
+        <span class="lang-en-strict">About</span><span class="lang-zh-only">关于</span>
+      </a>
+    </nav>
+
+    <div class="ml-auto flex items-center gap-2">
+      <LangSwitcher />
+      <details class="relative md:hidden">
+        <summary class="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-md border border-[--color-rule] text-[--color-ink-soft]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+          <span class="sr-only">Menu</span>
+        </summary>
+        <div class="absolute right-0 top-11 w-52 rounded-md border border-[--color-rule] bg-white py-2 shadow-lg">
+          {laws.map((l) => (
+            <a href={`/laws/${l.slug}/`} class="block px-4 py-2 text-sm no-underline text-[--color-ink] hover:bg-slate-50">{l.short_title}</a>
+          ))}
+          {ghostsToShow.map((g) => (
+            <span
+              class="block px-4 py-2 text-sm text-[--color-ink-faint] cursor-not-allowed select-none"
+              aria-disabled="true"
+              title="Coming soon"
+            >
+              {g.short}
+            </span>
+          ))}
+          <div class="my-1 border-t border-[--color-rule]"></div>
+          <a href="/about/" class="block px-4 py-2 text-sm no-underline text-[--color-ink] hover:bg-slate-50">
+            <span class="lang-en-strict">About</span><span class="lang-zh-only">关于</span>
+          </a>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,84 @@
+---
+import type { Law } from '../lib/types';
+import { groupArticlesByChapter } from '../lib/laws';
+
+export interface Props {
+  law: Law;
+  kind: 'recital' | 'article';
+  current?: number;
+}
+
+const { law, kind, current } = Astro.props;
+const folder = kind === 'recital' ? 'recitals' : 'articles';
+const labelEn = kind === 'recital' ? 'Recitals' : 'Articles';
+const labelZh = kind === 'recital' ? '序言' : '条文';
+
+// For articles we group by chapter; for recitals we use a single flat group.
+const articleGroups = kind === 'article' ? groupArticlesByChapter(law) : [];
+---
+<aside class="dr-toc md:sticky md:top-20 md:max-h-[calc(100vh-6rem)] md:overflow-y-auto">
+  <div class="dr-toc__head">
+    <p class="dr-toc__lawname">{law.short_title}</p>
+    <p class="dr-toc__kind">
+      <span class="lang-en-strict">{labelEn}</span>
+      <span class="lang-zh-only">{labelZh}</span>
+    </p>
+  </div>
+
+  <div class="max-h-[60vh] overflow-y-auto py-1 md:max-h-none">
+    {kind === 'recital' ? (
+      <ol>
+        {law.recitals.map((r) => {
+          const active = r.number === current;
+          return (
+            <li>
+              <a
+                href={`/laws/${law.slug}/${folder}/${r.number}/`}
+                class:list={['dr-toc__row', active && 'dr-toc__row--active']}
+              >
+                <span class="dr-toc__num">{r.number}</span>
+                <span class="dr-toc__label">
+                  <span class="lang-en-strict">Recital {r.number}</span>
+                  <span class="lang-zh-only">第 {r.number} 段</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    ) : (
+      <div>
+        {articleGroups.map(({ chapter, articles }) => (
+          <section>
+            <h3 class="dr-toc__chapter">
+              <span>CH. {chapter.roman}</span>
+              <span class="dr-toc__chapter-name">
+                <span class="lang-en-strict">{chapter.title_en}</span>
+                <span class="lang-zh-only">{chapter.title_zh}</span>
+              </span>
+            </h3>
+            <ol>
+              {articles.map((a) => {
+                const active = a.number === current;
+                return (
+                  <li>
+                    <a
+                      href={`/laws/${law.slug}/${folder}/${a.number}/`}
+                      class:list={['dr-toc__row', active && 'dr-toc__row--active']}
+                    >
+                      <span class="dr-toc__num">{a.number}</span>
+                      <span class="dr-toc__label">
+                        <span class="lang-en-strict">{a.title_en}</span>
+                        <span class="lang-zh-only">{a.title_zh}</span>
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </div>
+    )}
+  </div>
+</aside>

@@ -1,0 +1,748 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  Self-hosted fonts (no Google Fonts CDN)                            */
+/*                                                                     */
+/*  fontsource ships pre-built woff2 files split into unicode-range    */
+/*  subsets. Vite resolves these `@import` paths to npm package CSS,   */
+/*  which references woff2 files; both end up in /dist/_astro at build */
+/*  time. Result: zero external requests, CJK glyphs still lazy-load.  */
+/*                                                                     */
+/*  Weights kept deliberately lean — three per family:                 */
+/*    Sans  (Inter / Noto Sans SC)        400, 500, 700                */
+/*    Serif (Noto Serif / Noto Serif SC)  400, 600, 700                */
+/* ------------------------------------------------------------------ */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/noto-sans-sc/400.css";
+@import "@fontsource/noto-sans-sc/500.css";
+@import "@fontsource/noto-sans-sc/700.css";
+@import "@fontsource/noto-serif/400.css";
+@import "@fontsource/noto-serif/600.css";
+@import "@fontsource/noto-serif/700.css";
+@import "@fontsource/noto-serif-sc/400.css";
+@import "@fontsource/noto-serif-sc/600.css";
+@import "@fontsource/noto-serif-sc/700.css";
+
+/* ------------------------------------------------------------------ */
+/*  Design tokens                                                      */
+/* ------------------------------------------------------------------ */
+@theme {
+  /*
+   *  Body / UI:    Inter (Latin)  + Noto Sans SC (CJK)
+   *  Headings:     Noto Serif (Latin) + Noto Serif SC (CJK)
+   *
+   *  The browser picks per-glyph: Inter renders the Latin characters,
+   *  Noto Sans SC kicks in for Chinese. Same for the serif pair on headings.
+   */
+  --font-sans: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Noto Serif", "Noto Serif SC", Georgia, "Times New Roman",
+    serif;
+  /*
+   *  Mono — used for eyebrow labels (Art. N pill, "Abs. 1", footnote prefix
+   *  fn-en-p1-a-1, permalink hash). System stack for Phase 1; JetBrains
+   *  Mono self-hosted in Phase 4 (Decision #9, 2026-04-28).
+   */
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo,
+    "DejaVu Sans Mono", monospace;
+
+  --color-ink: #0f172a;            /* main text */
+  --color-ink-soft: #475569;       /* secondary */
+  --color-ink-faint: #94a3b8;      /* tertiary — TOC non-current, footnote back-refs */
+  --color-rule: #e2e8f0;           /* borders */
+  --color-rule-soft: #eef2f6;      /* footnote divider dashed line */
+  --color-paper: #ffffff;
+  --color-cream: #f8fafc;          /* page bg */
+  --color-brand: #0b3d91;          /* navy blue */
+  --color-brand-deep: #082e6e;     /* button hover */
+  --color-brand-soft: #eaf0fb;
+  --color-accent: #b91c1c;
+  --color-target: #fef3c7;         /* :target yellow bg (Phase 2) */
+  --color-target-rule: #f59e0b;    /* :target orange outline (Phase 2) */
+
+  /*
+   *  Type scale — README values, NOT the prototype CSS values
+   *  (Decision #1, 2026-04-28: --t-h1 = 42px not 32px; --t-body = 16px not 17px).
+   *  --line-body raised to 1.65 to compensate for smaller body size.
+   */
+  --t-eyebrow: 11px;               /* mono small labels (Art. N pill, Abs. 1) */
+  --t-meta: 13px;                  /* metadata, breadcrumbs, footer */
+  --t-block-h: 15px;               /* paragraph/letter heading */
+  --t-body: 16px;                  /* body text */
+  --t-h2: 22px;                    /* section / Article H2 */
+  --t-h1: 42px;                    /* article H1 */
+  --line-body: 1.65;               /* body line-height */
+  --line-tight: 1.35;              /* heading line-height */
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+html {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-cream);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+}
+
+/* All headings use the serif pair (Noto Serif + Noto Serif SC). */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-feature-settings: "ss01", "kern";
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Language visibility                                                */
+/*                                                                     */
+/*  BaseLayout.astro renders <html class="lang-both"> by default;      */
+/*  LangSwitcher swaps the class to lang-en / lang-zh / lang-both at   */
+/*  runtime (inline <script>, no client framework).                    */
+/*                                                                     */
+/*  Four classes drive the matrix below:                               */
+/*                                                                     */
+/*    class            EN-only mode   ZH-only mode   双语 mode         */
+/*    ─────────────────────────────────────────────                   */
+/*    .lang-en-only      shown          hidden         shown           */
+/*    .lang-zh-only      hidden         shown          shown           */
+/*    .lang-en-strict    shown          hidden         hidden  (UI)    */
+/*    .lang-zh-strict    hidden         shown          hidden  (UI)    */
+/*                                                                     */
+/*  The "-only" pair is for bilingual *content* (both shown side by    */
+/*  side in 双语). The "-strict" pair is for monolingual *chrome* that */
+/*  must collapse when the user is reading bilingually — e.g., the     */
+/*  "Art. N" label uses .lang-en-strict + .lang-zh-only so 双语 mode   */
+/*  still shows "第 N 条" instead of duplicating "Art. 6 第 6 条"      */
+/*  (Decision #3, 2026-04-28).                                         */
+/* ------------------------------------------------------------------ */
+html.lang-en .lang-zh-only,
+html.lang-en .lang-zh-strict,
+html.lang-zh .lang-en-only,
+html.lang-zh .lang-en-strict,
+html.lang-both .lang-en-strict,
+html.lang-both .lang-zh-strict {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Phase 2 — Article body interactivity                              */
+/*                                                                     */
+/*  Three families of styles, all targeting the deep-linkable units    */
+/*  on an article page:                                                */
+/*                                                                     */
+/*    1.  `:target` flash — yellow + orange outline → fade transparent */
+/*    2.  `.provision-block` hairline + persistent permalink button    */
+/*    3.  `.dr-toast` clipboard-copied confirmation                    */
+/*    4.  `.dr-eyebrow-num` navy pill for "Art. N" / "第 N 条"         */
+/*    5.  `.dr-endnotes` aggregated footnote section (EndnotesSection) */
+/*                                                                     */
+/*  Decisions §16 (2026-04-28): permalink is persistent (#11),         */
+/*  endnotes-then-metadata order (#12), pill swaps content by lang     */
+/*  (#13). Animation timing 1.6s hold + 800ms fade is the contract     */
+/*  shared with `.dr-en-row` and `sup a:target` — do not change.       */
+/* ------------------------------------------------------------------ */
+
+@keyframes targetFade {
+  to {
+    background: transparent;
+    outline-color: transparent;
+  }
+}
+
+.provision-block:target,
+.dr-en-row:target,
+.bilingual-col sup a:target {
+  background: var(--color-target);
+  outline: 2px solid var(--color-target-rule);
+  outline-offset: 4px;
+  animation: targetFade 800ms ease-out 1 forwards;
+  animation-delay: 1.6s;
+}
+
+/* ------------------------------------------------------------------ */
+/*  ProvisionBlock — hairline rule + persistent SVG permalink button   */
+/* ------------------------------------------------------------------ */
+.provision-block {
+  position: relative;
+  border-top: 1px solid var(--color-rule);
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  scroll-margin-top: 96px;
+}
+.provision-block:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.provision-block__permalink {
+  position: absolute;
+  left: -28px;
+  top: 22px;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-ink-faint);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 120ms ease-out, background 120ms ease-out;
+}
+.provision-block__permalink:hover,
+.provision-block__permalink:focus-visible {
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  outline: none;
+}
+.provision-block__permalink svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+/* On narrow screens the -28px gutter is offscreen; tuck the button
+ * inline above the heading instead of clipping it. */
+@media (max-width: 767px) {
+  .provision-block__permalink {
+    position: static;
+    margin-bottom: 0.25rem;
+  }
+}
+
+/* Block heading — eyebrow-style mono label (Abs. 1 / lit. a / ...) */
+.provision-block__heading {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 500;
+  color: var(--color-ink-soft);
+  margin: 0 0 0.5rem;
+  line-height: var(--line-tight);
+}
+.provision-block--lit .provision-block__heading,
+.provision-block--sub .provision-block__heading {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+}
+.provision-block--lit { padding-left: 22px; }
+.provision-block--sub { padding-left: 44px; }
+
+/* ------------------------------------------------------------------ */
+/*  Toast — "Link copied" confirmation                                 */
+/* ------------------------------------------------------------------ */
+@keyframes drToastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+@keyframes drToastOut {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to   { opacity: 0; transform: translate(-50%, 8px); }
+}
+.dr-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translate(-50%, 0);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-mono);
+  font-size: var(--t-meta);
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 0.18);
+  z-index: 100;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* fadeIn 200ms → hold 1000ms → fadeOut 200ms = 1.4s total */
+  animation:
+    drToastIn 200ms ease-out 0ms 1 both,
+    drToastOut 200ms ease-in 1200ms 1 both;
+}
+.dr-toast svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  .dr-eyebrow-num — navy pill for Art. N / 第 N 条 (Decision #13)    */
+/*                                                                     */
+/*  Two spans share this class inside ProvisionLayout's eyebrow,       */
+/*  one carrying .lang-en-strict and one .lang-zh-only, so visually    */
+/*  the user always sees exactly one pill and the content swaps by    */
+/*  language mode.                                                     */
+/* ------------------------------------------------------------------ */
+.dr-eyebrow-num {
+  display: inline-block;
+  background: var(--color-brand);
+  color: var(--color-paper);
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Endnotes section — EN / ZH double column, merged sequence numbers */
+/* ------------------------------------------------------------------ */
+.dr-endnotes {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-rule);
+  scroll-margin-top: 96px;
+}
+
+.dr-endnotes__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.dr-endnotes__title {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--color-brand);
+}
+.dr-endnotes__count {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  color: var(--color-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two-column EN/ZH layout. In single-language modes one column hides
+ * via .lang-* visibility; the remaining column reflows as a normal
+ * single-stream block, capped to 680px so it doesn't sprawl. */
+.dr-endnotes__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 40px;
+}
+html.lang-en .dr-endnotes__grid,
+html.lang-zh .dr-endnotes__grid {
+  grid-template-columns: minmax(0, 680px);
+  justify-content: start;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bilingual body grid — collapse to single column in monolingual    */
+/*  modes so the visible column reflows to full width instead of      */
+/*  staying at 50% with empty space next to it.                        */
+/*                                                                     */
+/*  The columns themselves carry .lang-en-only / .lang-zh-only so the */
+/*  hide-rule above takes care of which column is visible; this just  */
+/*  fixes the grid track that would otherwise leave a 50% gap.        */
+/* ------------------------------------------------------------------ */
+@media (min-width: 768px) {
+  html.lang-en [data-bilingual],
+  html.lang-zh [data-bilingual] {
+    grid-template-columns: minmax(0, 680px);
+    justify-content: start;
+  }
+}
+
+/* One row in one column = one half of one merged endnote. */
+.dr-en-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 24px;
+  column-gap: 12px;
+  align-items: start;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed var(--color-rule-soft);
+  scroll-margin-top: 96px;
+}
+.dr-en-row:last-child { border-bottom: none; }
+
+.dr-en-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-brand);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-body);
+}
+.dr-en-ctx {
+  display: inline-block;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: 2px;
+}
+.dr-en-text {
+  font-size: var(--t-meta);
+  line-height: var(--line-body);
+  color: var(--color-ink);
+}
+.dr-en-text > p { margin: 0; display: inline; }
+.dr-en-text > p + p { margin-top: 0.4rem; display: block; }
+
+.dr-fn-back {
+  font-size: 14px;
+  color: var(--color-ink-faint);
+  opacity: 0.5;
+  text-align: right;
+  text-decoration: none;
+  transition: opacity 120ms ease-out, color 120ms ease-out;
+}
+.dr-fn-back:hover,
+.dr-fn-back:focus-visible {
+  opacity: 1;
+  color: var(--color-brand);
+  outline: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inline footnote reference — <sup> in body text                     */
+/* ------------------------------------------------------------------ */
+.bilingual-col sup {
+  font-size: 0.7em;
+  vertical-align: super;
+  line-height: 0;
+}
+.bilingual-col sup a {
+  color: var(--color-brand);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+.bilingual-col sup a:hover,
+.bilingual-col sup a:focus-visible {
+  background: var(--color-brand-soft);
+  outline: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Re-target trigger                                                  */
+/*                                                                     */
+/*  Clicking the permalink on a block that's already :target (hash     */
+/*  unchanged) does not re-fire `:target` in the browser. The script   */
+/*  in BilingualBlocks.astro toggles this class via remove → reflow →  */
+/*  add to restart the same animation regardless of hash state.       */
+/* ------------------------------------------------------------------ */
+.provision-block--retarget {
+  background: var(--color-target);
+  outline: 2px solid var(--color-target-rule);
+  outline-offset: 4px;
+  animation: targetFade 800ms ease-out 1 forwards;
+  animation-delay: 1.6s;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Article H1 — bilingual stack                                       */
+/*                                                                     */
+/*  EN mode:    only `.article-h1-en` shown, primary 42px              */
+/*  ZH mode:    only `.article-h1-zh` shown, promoted to primary 42px  */
+/*  双语 mode:  EN primary (42px ink) + ZH subsidiary (26px ink-soft)  */
+/*                                                                     */
+/*  The .lang-en-only / .lang-zh-only visibility rules already hide    */
+/*  the wrong half in monolingual modes; this block only handles the   */
+/*  size/weight/color promotion of ZH when it stands alone.            */
+/* ------------------------------------------------------------------ */
+.article-h1-en {
+  font-family: var(--font-serif);
+  font-size: var(--t-h1);
+  font-weight: 700;
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+  margin: 0;
+}
+.article-h1-zh {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: var(--line-tight);
+  color: var(--color-ink-soft);
+  margin: 4px 0 0;
+}
+html.lang-zh .article-h1-zh {
+  font-size: var(--t-h1);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Phase 3 — peripheral chrome                                        */
+/*                                                                     */
+/*  Header wordmark + nav, TocSidebar bare list, generic eyebrow,      */
+/*  and feature-card heading. These are the same five token-driven     */
+/*  patterns the article body already established (mono eyebrows,      */
+/*  serif heads, brand-color permalinks), now applied to global chrome */
+/*  so the rest of the site reads as part of the same publication.    */
+/* ------------------------------------------------------------------ */
+
+/* Wordmark — 22×22 navy mark + 2-line serif name (Header) */
+.dr-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-brand);
+  text-decoration: none;
+}
+.dr-wordmark__mark {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  background: var(--color-brand);
+  color: var(--color-paper);
+  border-radius: 3px;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+.dr-wordmark__name {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-ink);
+  /* Two-line stack — `Digital` / `Rulebook` — only on ≥sm. */
+  display: none;
+}
+@media (min-width: 640px) {
+  .dr-wordmark__name { display: inline-flex; flex-direction: column; }
+}
+
+/* Nav — mono uppercase row of links */
+.dr-nav {
+  display: none;
+  align-items: center;
+  gap: 22px;
+}
+@media (min-width: 768px) {
+  .dr-nav { display: inline-flex; }
+}
+.dr-nav-link {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--color-ink-soft);
+  text-decoration: none;
+  padding: 4px 2px;
+  transition: color 120ms ease-out;
+}
+.dr-nav-link:hover,
+.dr-nav-link:focus-visible {
+  color: var(--color-ink);
+  outline: none;
+}
+.dr-nav-link[aria-current="page"],
+.dr-nav-link.is-active {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.dr-nav-link--ghost {
+  color: var(--color-ink-faint);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.dr-nav-link--ghost:hover { color: var(--color-ink-faint); }
+
+/* TocSidebar — bare list (no card frame), 2px brand left-border on active */
+.dr-toc {
+  /* sticky behavior is applied by Tailwind on the <aside> wrapper */
+}
+.dr-toc__head {
+  padding: 0 0 10px;
+  margin-bottom: 6px;
+}
+.dr-toc__lawname {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-faint);
+  font-weight: 600;
+}
+.dr-toc__kind {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-ink-soft);
+  margin-top: 2px;
+}
+.dr-toc__chapter {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--color-brand);
+  padding: 14px 12px 6px;
+}
+.dr-toc__chapter-name {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.dr-toc__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 8px 5px 12px;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.dr-toc__row:hover {
+  background: rgb(15 23 42 / 0.04);
+}
+.dr-toc__row--active {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  border-left-color: var(--color-brand);
+  font-weight: 500;
+}
+.dr-toc__num {
+  flex-shrink: 0;
+  width: 28px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-faint);
+}
+.dr-toc__row--active .dr-toc__num { color: var(--color-brand); }
+.dr-toc__label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  color: inherit;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Generic eyebrow — small mono uppercase label used in hero + section heads */
+.dr-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-soft);
+  font-weight: 600;
+}
+.dr-eyebrow--brand { color: var(--color-brand); }
+.dr-eyebrow--hero { letter-spacing: 0.2em; }
+
+/* Feature-card heading on the home page (mono brand, replaces the
+ * h3 text-sm uppercase pattern). */
+.dr-feature-h3 {
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-brand);
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Hero H1 — promote the existing `text-3xl/text-5xl` rhythm to the
+ * Phase 1 type-scale. Used by index.astro hero. */
+.dr-hero-h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 4vw + 16px, var(--t-h1));
+  font-weight: 700;
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* Page H1 — used by sub-pages (about, 404, recitals/articles index) so
+ * they all sit at one consistent `--t-h1` height. */
+.dr-page-h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 2vw + 18px, 32px);
+  font-weight: 700;
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* Section H2 — for "Regulations" home-page section header etc. */
+.dr-section-h2 {
+  font-family: var(--font-serif);
+  font-size: var(--t-h2);
+  font-weight: 700;
+  line-height: var(--line-tight);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+/* Body copy — apply the type-scale where prose belongs (hero subhead,
+ * feature paragraphs, about page). Tailwind's prose utilities aren't
+ * loaded; this is the explicit `--t-body / --line-body` pair. */
+.dr-body {
+  font-family: var(--font-sans);
+  font-size: var(--t-body);
+  line-height: var(--line-body);
+  color: var(--color-ink-soft);
+}
+
+/* Meta — small label rows (footer, page subtitles, "N items" counts). */
+.dr-meta {
+  font-family: var(--font-sans);
+  font-size: var(--t-meta);
+  color: var(--color-ink-soft);
+}
+
+/* Coverage pill — small "in progress / 持续补充中" badge on LawCard,
+ * surfaces when the site's article/recital counts are below the law's
+ * official total. Disappears automatically once a law is 100% transcribed. */
+.dr-coverage-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--color-brand);
+  background: var(--color-brand-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+}

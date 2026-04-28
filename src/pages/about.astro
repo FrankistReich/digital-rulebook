@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="About" path="/about/">
+  <article class="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
+    <h1 class="dr-page-h1">
+      <span class="lang-en-strict">About Digital Rulebook</span>
+      <span class="lang-zh-only">关于 Digital Rulebook</span>
+    </h1>
+
+    <div class="dr-body mt-8 space-y-5">
+      <p>
+        <span class="lang-en-only">
+          Digital Rulebook collects key EU digital regulations and presents them
+          side-by-side in English and Chinese. The aim is a fast, focused reading
+          experience for practitioners, students and researchers who navigate
+          between the two languages.
+        </span>
+        <span class="lang-zh-only">
+          Digital Rulebook 汇集欧盟主要数字监管法规，以中英双语左右对照呈现，
+          为在两种语言间工作的从业者、学生与研究者提供专注、快速的阅读体验。
+        </span>
+      </p>
+      <p>
+        <span class="lang-en-only">
+          Each provision links to a stable URL. Texts shown here are for reference
+          only — the authoritative version is always the one published in the
+          Official Journal of the European Union.
+        </span>
+        <span class="lang-zh-only">
+          每个条款都对应稳定的 URL。本站文本仅供参考 ——
+          法律的权威文本始终以《欧盟官方公报》上发布的版本为准。
+        </span>
+      </p>
+      <p>
+        <span class="lang-en-only">
+          The site is open and static — Astro + Tailwind, no tracking. Suggestions
+          and corrections are welcome.
+        </span>
+        <span class="lang-zh-only">
+          本站为纯静态开源项目，使用 Astro + Tailwind 构建，无任何追踪。
+          欢迎反馈与勘误建议。
+        </span>
+      </p>
+    </div>
+  </article>
+</BaseLayout>

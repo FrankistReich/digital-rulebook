@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getAllLaws, getLaw } from '../../../../lib/laws';
+
+export async function getStaticPaths() {
+  return getAllLaws().map((law) => ({ params: { law: law.slug } }));
+}
+
+const { law: slug } = Astro.params;
+const law = getLaw(slug!);
+if (!law) return Astro.redirect('/404');
+const path = `/laws/${law.slug}/recitals/`;
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&ldquo;/g, '“').replace(/&rdquo;/g, '”')
+    .replace(/&lsquo;/g, '‘').replace(/&rsquo;/g, '’')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+function preview(html: string, max = 220): string {
+  const text = decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
+}
+---
+<BaseLayout title={`Recitals — ${law.short_title}`} description={law.description_en} path={path}>
+  <div class="mx-auto max-w-4xl px-4 py-10 md:px-6 md:py-14">
+    <nav class="mb-3 flex flex-wrap items-center gap-1 text-xs text-[--color-ink-soft]" aria-label="Breadcrumb">
+      <a href="/" class="hover:underline">
+        <span class="lang-en-strict">Home</span><span class="lang-zh-only">首页</span>
+      </a>
+      <span aria-hidden="true">/</span>
+      <a href={`/laws/${law.slug}/`} class="hover:underline">{law.short_title}</a>
+    </nav>
+    <h1 class="dr-page-h1">
+      <span class="lang-en-strict">{law.short_title} · Recitals</span>
+      <span class="lang-zh-only">{law.short_title} · 序言</span>
+    </h1>
+    <p class="dr-meta mt-2">
+      <span class="lang-en-strict">{law.recitals.length} recitals</span>
+      <span class="lang-zh-only">共 {law.recitals.length} 段</span>
+    </p>
+
+    <ol class="mt-8 divide-y divide-[--color-rule] overflow-hidden rounded-md border border-[--color-rule] bg-white">
+      {law.recitals.map((r) => (
+        <li>
+          <a
+            href={`/laws/${law.slug}/recitals/${r.number}/`}
+            class="flex items-baseline gap-4 px-4 py-3 no-underline transition hover:bg-slate-50"
+          >
+            <span class="w-10 shrink-0 font-mono text-xs text-[--color-ink-soft] tabular-nums">{r.number}</span>
+            <span class="line-clamp-2 text-sm leading-relaxed text-[--color-ink]">
+              <span class="lang-en-strict">{preview(r.content_en)}</span>
+              <span class="lang-zh-only">{preview(r.content_zh)}</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+</BaseLayout>

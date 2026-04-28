@@ -1,0 +1,41 @@
+---
+import ProvisionLayout from '../../../../layouts/ProvisionLayout.astro';
+import { getAllLaws, getLaw } from '../../../../lib/laws';
+
+export async function getStaticPaths() {
+  const paths = [];
+  for (const law of getAllLaws()) {
+    for (const a of law.articles) {
+      paths.push({ params: { law: law.slug, id: String(a.number) } });
+    }
+  }
+  return paths;
+}
+
+const { law: slug, id } = Astro.params;
+const law = getLaw(slug!);
+if (!law) return Astro.redirect('/404');
+
+const number = Number(id);
+const article = law.articles.find((a) => a.number === number);
+if (!article) return Astro.redirect('/404');
+
+const path = `/laws/${law.slug}/articles/${number}/`;
+---
+<ProvisionLayout
+  law={law}
+  kind="article"
+  number={number}
+  titleEn={article.title_en}
+  titleZh={article.title_zh}
+  blocks={article.blocks}
+  metadata={{
+    last_reviewed: article.last_reviewed,
+    source_version: article.source_version,
+    related: article.related,
+    related_recitals: article.related_recitals,
+    translation_notes: article.translation_notes,
+  }}
+  endnotes={article.endnotes}
+  path={path}
+/>

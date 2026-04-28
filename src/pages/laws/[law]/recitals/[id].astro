@@ -1,0 +1,33 @@
+---
+import ProvisionLayout from '../../../../layouts/ProvisionLayout.astro';
+import { getAllLaws, getLaw } from '../../../../lib/laws';
+
+export async function getStaticPaths() {
+  const paths = [];
+  for (const law of getAllLaws()) {
+    for (const r of law.recitals) {
+      paths.push({ params: { law: law.slug, id: String(r.number) } });
+    }
+  }
+  return paths;
+}
+
+const { law: slug, id } = Astro.params;
+const law = getLaw(slug!);
+if (!law) return Astro.redirect('/404');
+
+const number = Number(id);
+const recital = law.recitals.find((r) => r.number === number);
+if (!recital) return Astro.redirect('/404');
+
+const path = `/laws/${law.slug}/recitals/${number}/`;
+---
+<ProvisionLayout
+  law={law}
+  kind="recital"
+  number={number}
+  titleEn={`Recital ${number}`}
+  titleZh={`第 ${number} 段（序言）`}
+  blocks={recital.blocks}
+  path={path}
+/>

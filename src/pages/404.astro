@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Not found">
+  <section class="mx-auto max-w-2xl px-4 py-24 text-center md:px-6">
+    <p class="dr-eyebrow">404</p>
+    <h1 class="dr-page-h1 mt-3">
+      <span class="lang-en-strict">Page not found</span>
+      <span class="lang-zh-only">页面未找到</span>
+    </h1>
+    <p class="dr-body mt-3">
+      <span class="lang-en-strict">The provision you requested doesn't exist — it may have been renumbered.</span>
+      <span class="lang-zh-only">您请求的条款不存在 —— 它可能已被重新编号。</span>
+    </p>
+    <a
+      href="/"
+      class="mt-6 inline-flex items-center rounded-md bg-[--color-brand] px-5 py-2.5 text-sm font-medium text-white no-underline hover:bg-[--color-brand-deep]"
+    >
+      <span class="lang-en-strict">Back home</span>
+      <span class="lang-zh-only">返回首页</span>
+    </a>
+  </section>
+</BaseLayout>

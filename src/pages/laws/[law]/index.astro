@@ -1,0 +1,147 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { getAllLaws, getLaw, groupArticlesByChapter } from '../../../lib/laws';
+
+export async function getStaticPaths() {
+  return getAllLaws().map((law) => ({ params: { law: law.slug } }));
+}
+
+const { law: slug } = Astro.params;
+const law = getLaw(slug!);
+if (!law) {
+  return Astro.redirect('/404');
+}
+const path = `/laws/${law.slug}/`;
+
+/**
+ * Strip HTML tags, decode common entities, collapse whitespace, truncate.
+ * Used for recital previews — `marked` HTML-escapes quotes (`"` → `&quot;`)
+ * for XSS safety, so we decode them back when emitting plain-text previews.
+ */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&ldquo;/g, '“')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rsquo;/g, '’')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&'); // last so we don't double-decode
+}
+function preview(html: string, max = 140): string {
+  const text = decodeEntities(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
+}
+
+const articleGroups = groupArticlesByChapter(law);
+---
+<BaseLayout title={law.title_en} description={law.description_en} path={path}>
+  <div class="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-14">
+    {/* ----- Hero ------------------------------------------------------ */}
+    <p class="dr-eyebrow">
+      CELEX {law.celex} ·
+      <a href={law.official_url} target="_blank" rel="noopener" class="hover:underline">EUR-Lex</a>
+    </p>
+    <h1 class="dr-hero-h1 mt-2">
+      <span class="lang-en-only">{law.title_en}</span>
+      <span class="lang-zh-only">{law.title_zh}</span>
+    </h1>
+    <p class="dr-body mt-4 max-w-3xl">
+      <span class="lang-en-only">{law.description_en}</span>
+      <span class="lang-zh-only">{law.description_zh}</span>
+    </p>
+
+    {/* ----- Two-column directory ------------------------------------- */}
+    <div class="mt-12 grid gap-10 lg:grid-cols-2 lg:gap-14">
+
+      {/* --- Recitals column --- */}
+      <section id="recitals" aria-labelledby="recitals-heading">
+        <div class="mb-3 flex items-baseline justify-between border-b border-[--color-rule] pb-2">
+          <h2 id="recitals-heading" class="dr-section-h2">
+            <span class="lang-en-strict">Recitals</span>
+            <span class="lang-zh-only">序言</span>
+          </h2>
+          <span class="dr-eyebrow">{law.recitals.length}</span>
+        </div>
+        {law.recitals.length === 0 ? (
+          <p class="dr-body py-6">
+            <span class="lang-en-strict">No recitals yet.</span>
+            <span class="lang-zh-only">暂无内容。</span>
+          </p>
+        ) : (
+          <ol class="divide-y divide-[--color-rule]">
+            {law.recitals.map((r) => (
+              <li>
+                <a
+                  href={`/laws/${law.slug}/recitals/${r.number}/`}
+                  class="group flex items-start gap-3 rounded-md px-2 py-2.5 no-underline transition hover:bg-slate-50"
+                >
+                  <span class="w-7 shrink-0 pt-0.5 text-right font-mono text-xs text-[--color-ink-soft]">
+                    {r.number}
+                  </span>
+                  <span class="min-w-0 flex-1 text-sm leading-relaxed text-[--color-ink-soft] group-hover:text-[--color-ink]">
+                    <span class="lang-en-strict">{preview(r.content_en)}</span>
+                    <span class="lang-zh-only">{preview(r.content_zh)}</span>
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+
+      {/* --- Articles column --- */}
+      <section id="articles" aria-labelledby="articles-heading">
+        <div class="mb-3 flex items-baseline justify-between border-b border-[--color-rule] pb-2">
+          <h2 id="articles-heading" class="dr-section-h2">
+            <span class="lang-en-strict">Articles</span>
+            <span class="lang-zh-only">条文</span>
+          </h2>
+          <span class="dr-eyebrow">{law.articles.length}</span>
+        </div>
+        {articleGroups.length === 0 ? (
+          <p class="dr-body py-6">
+            <span class="lang-en-strict">No articles yet.</span>
+            <span class="lang-zh-only">暂无内容。</span>
+          </p>
+        ) : (
+          <div class="space-y-6">
+            {articleGroups.map(({ chapter, articles }) => (
+              <div>
+                <h3 class="dr-eyebrow dr-eyebrow--brand mb-1 flex items-baseline gap-2 px-2">
+                  <span>CH. {chapter.roman}</span>
+                  <span class="dr-toc__chapter-name">
+                    <span class="lang-en-strict">{chapter.title_en}</span>
+                    <span class="lang-zh-only">{chapter.title_zh}</span>
+                  </span>
+                </h3>
+                <ol class="divide-y divide-[--color-rule]">
+                  {articles.map((a) => (
+                    <li>
+                      <a
+                        href={`/laws/${law.slug}/articles/${a.number}/`}
+                        class="group flex items-baseline gap-3 rounded-md px-2 py-2.5 no-underline transition hover:bg-slate-50"
+                      >
+                        <span class="w-20 shrink-0 text-right font-mono text-xs text-[--color-ink-soft]">
+                          <span class="lang-en-only">Art. {a.number}</span>
+                          <span class="lang-zh-strict">第 {a.number} 条</span>
+                        </span>
+                        <span class="min-w-0 flex-1 text-sm font-medium text-[--color-ink] group-hover:text-[--color-brand]">
+                          <span class="lang-en-strict">{a.title_en}</span>
+                          <span class="lang-zh-only">{a.title_zh}</span>
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  </div>
+</BaseLayout>

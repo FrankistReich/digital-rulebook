@@ -1,0 +1,74 @@
+---
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import { getAllLaws, getLaw, groupArticlesByChapter } from '../../../../lib/laws';
+
+export async function getStaticPaths() {
+  return getAllLaws().map((law) => ({ params: { law: law.slug } }));
+}
+
+const { law: slug } = Astro.params;
+const law = getLaw(slug!);
+if (!law) return Astro.redirect('/404');
+const path = `/laws/${law.slug}/articles/`;
+
+const articleGroups = groupArticlesByChapter(law);
+---
+<BaseLayout title={`Articles — ${law.short_title}`} description={law.description_en} path={path}>
+  <div class="mx-auto max-w-4xl px-4 py-10 md:px-6 md:py-14">
+    <nav class="mb-3 flex flex-wrap items-center gap-1 text-xs text-[--color-ink-soft]" aria-label="Breadcrumb">
+      <a href="/" class="hover:underline">
+        <span class="lang-en-strict">Home</span><span class="lang-zh-only">首页</span>
+      </a>
+      <span aria-hidden="true">/</span>
+      <a href={`/laws/${law.slug}/`} class="hover:underline">{law.short_title}</a>
+    </nav>
+    <h1 class="dr-page-h1">
+      <span class="lang-en-strict">{law.short_title} · Articles</span>
+      <span class="lang-zh-only">{law.short_title} · 条文</span>
+    </h1>
+    <p class="dr-meta mt-2">
+      <span class="lang-en-strict">{law.articles.length} articles · {articleGroups.length} chapters</span>
+      <span class="lang-zh-only">共 {law.articles.length} 条 · {articleGroups.length} 章</span>
+    </p>
+
+    {articleGroups.length === 0 ? (
+      <p class="dr-body mt-8">
+        <span class="lang-en-strict">No articles yet.</span>
+        <span class="lang-zh-only">暂无内容。</span>
+      </p>
+    ) : (
+      <div class="mt-8 space-y-8">
+        {articleGroups.map(({ chapter, articles }) => (
+          <section>
+            <h2 class="dr-eyebrow dr-eyebrow--brand mb-2 flex items-baseline gap-3">
+              <span>CH. {chapter.roman}</span>
+              <span class="dr-toc__chapter-name">
+                <span class="lang-en-strict">{chapter.title_en}</span>
+                <span class="lang-zh-only">{chapter.title_zh}</span>
+              </span>
+            </h2>
+            <ol class="divide-y divide-[--color-rule] overflow-hidden rounded-md border border-[--color-rule] bg-white">
+              {articles.map((a) => (
+                <li>
+                  <a
+                    href={`/laws/${law.slug}/articles/${a.number}/`}
+                    class="flex items-baseline gap-4 px-4 py-3 no-underline transition hover:bg-slate-50"
+                  >
+                    <span class="w-20 shrink-0 text-right font-mono text-xs text-[--color-ink-soft]">
+                      <span class="lang-en-only">Art. {a.number}</span>
+                      <span class="lang-zh-strict">第 {a.number} 条</span>
+                    </span>
+                    <span class="text-sm text-[--color-ink]">
+                      <span class="lang-en-strict">{a.title_en}</span>
+                      <span class="lang-zh-only">{a.title_zh}</span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>

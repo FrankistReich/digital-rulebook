@@ -1,0 +1,160 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import BilingualBlocks from '../components/BilingualBlocks.astro';
+import EndnotesSection from '../components/EndnotesSection.astro';
+import PrevNextNav from '../components/PrevNextNav.astro';
+import TocSidebar from '../components/TocSidebar.astro';
+import { getNeighbors, getChapterFor } from '../lib/laws';
+import type {
+  Law,
+  ProvisionBlock,
+  Article,
+  MergedEndnote,
+} from '../lib/types';
+
+export interface Props {
+  law: Law;
+  kind: 'recital' | 'article';
+  number: number;
+  titleEn: string;
+  titleZh: string;
+  blocks: ProvisionBlock[];
+  /** Optional skill-style metadata, only present for articles. */
+  metadata?: Pick<
+    Article,
+    'last_reviewed' | 'source_version' | 'related' | 'related_recitals' | 'translation_notes'
+  >;
+  /**
+   * Article-wide aggregated footnotes (Phase 2). Only articles carry this;
+   * recitals don't render an EndnotesSection. Empty / undefined → section
+   * is omitted entirely (the component already guards on `total > 0`).
+   */
+  endnotes?: MergedEndnote[];
+  path: string;
+}
+
+const { law, kind, number, titleEn, titleZh, blocks, metadata, endnotes, path } = Astro.props;
+const neighbors = getNeighbors(law, kind, number);
+
+const chapter = kind === 'article' ? getChapterFor(law, number) : undefined;
+
+// Eyebrow numeric pill — Art. N (EN) / 第 N 条 (ZH/双语). Decision §16 #13:
+// one pill, content swaps with language. The two spans share the
+// `.dr-eyebrow-num` class and rely on `.lang-en-strict` + `.lang-zh-only`
+// for visibility — see global.css.
+const numEn = kind === 'recital' ? `Recital ${number}` : `Art. ${number}`;
+const numZh = kind === 'recital' ? `第 ${number} 段` : `第 ${number} 条`;
+---
+<BaseLayout title={`${titleEn} — ${law.short_title}`} description={law.description_en} path={path}>
+  <div class="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
+    <div class="grid gap-8 md:grid-cols-[260px_1fr] md:gap-10">
+      <TocSidebar law={law} kind={kind} current={number} />
+
+      <article class="min-w-0">
+        <nav class="mb-3 flex flex-wrap items-center gap-1 text-xs text-[--color-ink-soft]" aria-label="Breadcrumb">
+          <a href="/" class="no-underline hover:underline">
+            <span class="lang-en-strict">Home</span><span class="lang-zh-only">首页</span>
+          </a>
+          <span aria-hidden="true">/</span>
+          <a href={`/laws/${law.slug}/`} class="no-underline hover:underline">{law.short_title}</a>
+          <span aria-hidden="true">/</span>
+          <a href={`/laws/${law.slug}/${kind === 'recital' ? 'recitals' : 'articles'}/`} class="no-underline hover:underline">
+            <span class="lang-en-strict">{kind === 'recital' ? 'Recitals' : 'Articles'}</span>
+            <span class="lang-zh-only">{kind === 'recital' ? '序言' : '条文'}</span>
+          </a>
+        </nav>
+
+        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="dr-eyebrow-num lang-en-strict">{numEn}</span>
+          <span class="dr-eyebrow-num lang-zh-only">{numZh}</span>
+          <span class="font-mono text-[13px] text-[--color-ink-faint]">CELEX {law.celex}</span>
+        </div>
+
+        {chapter && (
+          <p class="mt-2 text-xs text-[--color-brand]">
+            <span class="font-mono font-semibold">CH. {chapter.roman}</span>
+            <span class="ml-1.5 text-[--color-ink-soft]">·</span>
+            <span class="ml-1.5 font-medium">
+              <span class="lang-en-strict">{chapter.title_en}</span>
+              <span class="lang-zh-only">{chapter.title_zh}</span>
+            </span>
+          </p>
+        )}
+
+        <div class="mt-3">
+          <h1 class="article-h1-en lang-en-only">{titleEn}</h1>
+          <p class="article-h1-zh lang-zh-only">{titleZh}</p>
+        </div>
+
+        <hr class="my-6 border-[--color-rule]" />
+
+        <BilingualBlocks blocks={blocks} />
+
+        {endnotes && endnotes.length > 0 && (
+          <EndnotesSection endnotes={endnotes} blocks={blocks} />
+        )}
+
+        {metadata && (metadata.last_reviewed || metadata.source_version || (metadata.related?.length ?? 0) > 0 || (metadata.related_recitals?.length ?? 0) > 0 || metadata.translation_notes) && (
+          <aside class="mt-12 border-t border-[--color-rule] pt-6 text-xs text-[--color-ink-soft]">
+            <dl class="grid gap-3 sm:grid-cols-[max-content_1fr] sm:gap-x-6 sm:gap-y-2">
+              {metadata.source_version && (
+                <>
+                  <dt class="font-mono uppercase tracking-wider">
+                    <span class="lang-en-strict">Source version</span><span class="lang-zh-only">来源版本</span>
+                  </dt>
+                  <dd>{metadata.source_version}</dd>
+                </>
+              )}
+              {metadata.last_reviewed && (
+                <>
+                  <dt class="font-mono uppercase tracking-wider">
+                    <span class="lang-en-strict">Last reviewed</span><span class="lang-zh-only">最后校阅</span>
+                  </dt>
+                  <dd>{metadata.last_reviewed}</dd>
+                </>
+              )}
+              {metadata.related && metadata.related.length > 0 && (
+                <>
+                  <dt class="font-mono uppercase tracking-wider">
+                    <span class="lang-en-strict">Related articles</span><span class="lang-zh-only">相关条款</span>
+                  </dt>
+                  <dd class="flex flex-wrap gap-x-3 gap-y-1">
+                    {metadata.related.map((n) => (
+                      <a href={`/laws/${law.slug}/articles/${n}/`} class="hover:underline">
+                        <span class="lang-en-strict">Art. {n}</span><span class="lang-zh-only">第 {n} 条</span>
+                      </a>
+                    ))}
+                  </dd>
+                </>
+              )}
+              {metadata.related_recitals && metadata.related_recitals.length > 0 && (
+                <>
+                  <dt class="font-mono uppercase tracking-wider">
+                    <span class="lang-en-strict">Recitals</span><span class="lang-zh-only">相关序言</span>
+                  </dt>
+                  <dd class="flex flex-wrap gap-x-3 gap-y-1">
+                    {metadata.related_recitals.map((n) => (
+                      <a href={`/laws/${law.slug}/recitals/${n}/`} class="hover:underline">
+                        <span class="lang-en-strict">Recital {n}</span><span class="lang-zh-only">第 {n} 段</span>
+                      </a>
+                    ))}
+                  </dd>
+                </>
+              )}
+              {metadata.translation_notes && (
+                <>
+                  <dt class="font-mono uppercase tracking-wider">
+                    <span class="lang-en-strict">Translation note</span><span class="lang-zh-only">翻译说明</span>
+                  </dt>
+                  <dd>{metadata.translation_notes}</dd>
+                </>
+              )}
+            </dl>
+          </aside>
+        )}
+
+        <PrevNextNav prev={neighbors.prev} next={neighbors.next} />
+      </article>
+    </div>
+  </div>
+</BaseLayout>

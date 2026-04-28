@@ -1,0 +1,43 @@
+---
+import type { NeighborLink } from '../lib/types';
+
+export interface Props {
+  prev?: NeighborLink;
+  next?: NeighborLink;
+}
+
+const { prev, next } = Astro.props;
+---
+<nav class="mt-12 flex items-stretch justify-between gap-3 border-t border-[--color-rule] pt-6" aria-label="Pagination">
+  {prev ? (
+    <a
+      href={prev.href}
+      class="group flex max-w-[48%] flex-col items-start gap-1 rounded-md border border-[--color-rule] bg-white px-4 py-3 no-underline transition hover:border-[--color-brand] hover:bg-[--color-brand-soft]"
+    >
+      <span class="text-xs uppercase tracking-wider text-[--color-ink-soft]">
+        <span class="lang-en-strict">← Previous</span>
+        <span class="lang-zh-only">← 上一条</span>
+      </span>
+      <span class="text-sm font-medium text-[--color-ink]">
+        <span class="lang-en-strict">{prev.label_en}</span>
+        <span class="lang-zh-only">{prev.label_zh}</span>
+      </span>
+    </a>
+  ) : <span aria-hidden="true"></span>}
+
+  {next ? (
+    <a
+      href={next.href}
+      class="group flex max-w-[48%] flex-col items-end gap-1 rounded-md border border-[--color-rule] bg-white px-4 py-3 text-right no-underline transition hover:border-[--color-brand] hover:bg-[--color-brand-soft]"
+    >
+      <span class="text-xs uppercase tracking-wider text-[--color-ink-soft]">
+        <span class="lang-en-strict">Next →</span>
+        <span class="lang-zh-only">下一条 →</span>
+      </span>
+      <span class="text-sm font-medium text-[--color-ink]">
+        <span class="lang-en-strict">{next.label_en}</span>
+        <span class="lang-zh-only">{next.label_zh}</span>
+      </span>
+    </a>
+  ) : <span aria-hidden="true"></span>}
+</nav>

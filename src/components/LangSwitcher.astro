@@ -1,0 +1,61 @@
+---
+// Three-state language toggle: zh | en | both. Persists in localStorage.
+---
+<div
+  class="inline-flex items-center rounded-md border border-[--color-rule] bg-white p-0.5 text-xs font-medium"
+  role="group"
+  aria-label="Language"
+  data-lang-switcher
+>
+  <button type="button" data-lang-set="zh"
+    class="rounded px-2.5 py-1 text-[--color-ink-soft] transition data-[active=true]:bg-[--color-brand] data-[active=true]:text-white">
+    中文
+  </button>
+  <button type="button" data-lang-set="en"
+    class="rounded px-2.5 py-1 text-[--color-ink-soft] transition data-[active=true]:bg-[--color-brand] data-[active=true]:text-white">
+    EN
+  </button>
+  <button type="button" data-lang-set="both"
+    class="rounded px-2.5 py-1 text-[--color-ink-soft] transition data-[active=true]:bg-[--color-brand] data-[active=true]:text-white">
+    中 / EN
+  </button>
+</div>
+
+<script>
+  const KEY = 'dr-lang';
+  type Lang = 'zh' | 'en' | 'both';
+
+  function apply(value: Lang) {
+    const html = document.documentElement;
+    html.classList.remove('lang-zh', 'lang-en', 'lang-both');
+    html.classList.add(`lang-${value}`);
+    html.setAttribute('lang', value === 'zh' ? 'zh-CN' : 'en');
+    document.querySelectorAll<HTMLElement>('[data-lang-switcher]').forEach((sw) => {
+      sw.querySelectorAll<HTMLButtonElement>('[data-lang-set]').forEach((btn) => {
+        btn.dataset.active = String(btn.dataset.langSet === value);
+      });
+    });
+  }
+
+  function init() {
+    let stored = (localStorage.getItem(KEY) as Lang | null) ?? 'both';
+    if (stored !== 'zh' && stored !== 'en' && stored !== 'both') stored = 'both';
+    apply(stored);
+
+    document.querySelectorAll<HTMLElement>('[data-lang-switcher]').forEach((sw) => {
+      sw.addEventListener('click', (e) => {
+        const target = (e.target as HTMLElement).closest('[data-lang-set]');
+        if (!target) return;
+        const v = (target as HTMLElement).dataset.langSet as Lang;
+        localStorage.setItem(KEY, v);
+        apply(v);
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
